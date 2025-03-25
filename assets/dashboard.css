@@ -1,0 +1,137 @@
+/* Portfolio Backtest Dashboard CSS */
+
+/* Overall styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #343a40;
+}
+
+/* Card styling */
+.card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border: none;
+}
+
+.card-header {
+    background-color: #f1f3f5;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    border-radius: 8px 8px 0 0 !important;
+}
+
+/* Make tables more readable */
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td {
+    border: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+/* Highlight positive and negative values */
+.positive-value {
+    color: #198754;
+}
+
+.negative-value {
+    color: #dc3545;
+}
+
+/* Tabs styling */
+.tab {
+    padding: 12px 24px;
+    border-radius: 4px 4px 0 0;
+    font-weight: 500;
+}
+
+.tab--selected {
+    background-color: #fff;
+    border-bottom: 3px solid #0275d8;
+}
+
+/* Dashboard title area */
+.display-4 {
+    font-weight: 700;
+    color: #0275d8;
+}
+
+.lead {
+    color: #6c757d;
+}
+
+/* Dropdown styling */
+.Select-control {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+.Select-control:hover {
+    border-color: #80bdff;
+}
+
+.Select.is-focused > .Select-control {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Button styling */
+.btn {
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #0275d8;
+    border-color: #0275d8;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+/* Footer styling */
+footer {
+    font-size: 0.85rem;
+    color: #6c757d;
+    padding: 20px 0;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Make tooltips more readable */
+.dash-tooltip {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* Loading spinner */
+._dash-loading {
+    margin: auto;
+    text-align: center;
+    color: #0275d8;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 10px;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .card-header {
+        font-size: 1rem;
+    }
+} 
