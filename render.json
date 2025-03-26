@@ -1,0 +1,21 @@
+{
+  "services": [
+    {
+      "type": "web",
+      "name": "portfolio-dashboard",
+      "env": "python",
+      "plan": "free",
+      "buildCommand": "pip install -r requirements.txt && python update_data.py",
+      "startCommand": "gunicorn app:server",
+      "envVars": [
+        {
+          "key": "PYTHON_VERSION",
+          "value": "3.9.0"
+        }
+      ],
+      "repo": "https://github.com/valenteff/portfolio-dashboard-wfa.git",
+      "branch": "main",
+      "autoDeploy": true
+    }
+  ]
+}
