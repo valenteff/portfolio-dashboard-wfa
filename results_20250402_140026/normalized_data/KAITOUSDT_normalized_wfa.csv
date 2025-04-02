@@ -1,0 +1,2 @@
+Period number,In-sample date range,Out-of-sample date range,MA1 length,Afastamento,Out-of-sample trades,Out-of-sample net profit (%),Out-of-sample max drawdown (%),Out-of-sample win rate (%),Processing time (seconds),normalized_period
+1,2025-02-20 13:00:00 to 2025-03-06 13:00:00,2025-03-07 13:00:00 to 2025-03-09 13:00:00,300,0.02,4,5.639294804996043,9.262291412622954,75.0,210.749037027359,995
