@@ -121,12 +121,60 @@ class PortfolioBacktest:
             
         return self.normalized_data
     
-    def create_top_portfolios(self, num_top_portfolios: int = 10):
+    def calculate_trade_metrics(self, equity_df):
         """
-        Create top N portfolios based on performance metric from the PREVIOUS period to avoid look-ahead bias.
+        Calculate trade metrics from equity curve data.
         
         Args:
-            num_top_portfolios: Number of top portfolios to create (default: 10)
+            equity_df: DataFrame containing the equity curve data
+            
+        Returns:
+            Dictionary containing trade metrics
+        """
+        if equity_df.empty:
+            return {
+                'winning_trades': 0,
+                'total_trades': 0,
+                'win_rate': 0,
+                'net_profit': 0
+            }
+        
+        # Calculate trade-by-trade changes
+        equity_df['equity_diff'] = equity_df['equity'].diff()
+        equity_df['trade_direction'] = np.sign(equity_df['equity_diff'])
+        equity_df['trade_changed'] = equity_df['trade_direction'].diff().fillna(0) != 0
+        equity_df['trade_id'] = equity_df['trade_changed'].cumsum()
+        
+        # Calculate individual trade statistics
+        trades = []
+        for trade_id, group in equity_df.groupby('trade_id'):
+            if len(group) >= 2:  # Ensure we have at least start and end points
+                trade_start = group['equity'].iloc[0]
+                trade_end = group['equity'].iloc[-1]
+                trade_return = (trade_end / trade_start - 1) * 100
+                
+                trades.append({
+                    'id': trade_id,
+                    'return': trade_return,
+                    'profitable': trade_return > 0
+                })
+        
+        # Calculate metrics
+        total_trades = len(trades)
+        winning_trades = len([t for t in trades if t['profitable']])
+        win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+        net_profit = sum(t['return'] for t in trades)
+        
+        return {
+            'winning_trades': winning_trades,
+            'total_trades': total_trades,
+            'win_rate': win_rate,
+            'net_profit': net_profit
+        }
+    
+    def create_top_portfolios(self, num_top_portfolios: int = 10):
+        """
+        Create top N portfolios based on number of winning trades from the PREVIOUS period.
         """
         # Get all unique normalized periods
         all_periods = set()
@@ -146,22 +194,45 @@ class PortfolioBacktest:
                 
                 if not period_rows.empty:
                     for _, row in period_rows.iterrows():
-                        period_symbol_data[period].append({
-                            'symbol': symbol,
-                            'period_number': row['Period number'],
-                            'metric_value': row[self.performance_metric],
-                            'out_sample_range': row['Out-of-sample date range']
-                        })
+                        # Get the date range for this period
+                        date_range = row['Out-of-sample date range']
+                        start_date_str, end_date_str = date_range.split(' to ')
+                        start_date = pd.to_datetime(start_date_str)
+                        end_date = pd.to_datetime(end_date_str)
                         
+                        # Load and filter equity curve data for this period
+                        if symbol in self.equity_files:
+                            equity_df = pd.read_csv(self.equity_files[symbol])
+                            equity_df['datetime'] = pd.to_datetime(equity_df['datetime'])
+                            
+                            # Filter equity data for this period
+                            period_equity = equity_df[
+                                (equity_df['datetime'] >= start_date) & 
+                                (equity_df['datetime'] <= end_date)
+                            ].copy()
+                            
+                            # Calculate trade metrics for this period
+                            trade_metrics = self.calculate_trade_metrics(period_equity)
+                            
+                            period_symbol_data[period].append({
+                                'symbol': symbol,
+                                'period_number': row['Period number'],
+                                'winning_trades': trade_metrics['winning_trades'],
+                                'total_trades': trade_metrics['total_trades'],
+                                'win_rate': trade_metrics['win_rate'],
+                                'net_profit': trade_metrics['net_profit'],
+                                'out_sample_range': date_range
+                            })
+        
         # Create top N portfolios
         for n in range(1, num_top_portfolios + 1):
             portfolio_data = []
             
             # Skip the first period as there's no previous period to base selection on
             for period in all_periods:
-                if period <= 1:  # Skip period 1
+                if period <= 1:
                     continue
-                    
+                
                 # Get rankings from the PREVIOUS period
                 prev_period = period - 1
                 prev_period_data = period_symbol_data.get(prev_period, [])
@@ -169,25 +240,32 @@ class PortfolioBacktest:
                 if not prev_period_data:
                     continue
                 
-                # Sort symbols by their performance in the PREVIOUS period (descending)
-                prev_period_data.sort(key=lambda x: x['metric_value'], reverse=True)
+                # Sort by winning trades (primary), win rate (secondary), and net profit (tertiary)
+                prev_period_data.sort(key=lambda x: (
+                    x['winning_trades'],
+                    x['win_rate'],
+                    x['net_profit']
+                ), reverse=True)
                 
                 # Check if we have enough symbols for this top-N selection
                 if len(prev_period_data) >= n:
                     # Select the nth best symbol from the previous period
-                    selected_symbol = prev_period_data[n-1]['symbol']  # n-1 because index is 0-based
+                    selected_symbol = prev_period_data[n-1]['symbol']
                     
                     # Get this symbol's data for the CURRENT period
-                    current_period_data = []
-                    for item in period_symbol_data.get(period, []):
-                        if item['symbol'] == selected_symbol:
-                            current_period_data.append(item)
+                    current_period_data = [
+                        item for item in period_symbol_data.get(period, [])
+                        if item['symbol'] == selected_symbol
+                    ]
                     
                     # If the selected symbol has data for the current period, add it to the portfolio
                     if current_period_data:
-                        # In case there are multiple entries for the same symbol in a period,
-                        # choose the one with the best performance
-                        current_period_data.sort(key=lambda x: x['metric_value'], reverse=True)
+                        # Choose the entry with the most winning trades if multiple exist
+                        current_period_data.sort(key=lambda x: (
+                            x['winning_trades'],
+                            x['win_rate'],
+                            x['net_profit']
+                        ), reverse=True)
                         selected_data = current_period_data[0]
                         
                         portfolio_data.append({
@@ -195,7 +273,10 @@ class PortfolioBacktest:
                             'symbol': selected_symbol,
                             'original_period': selected_data['period_number'],
                             'out_sample_range': selected_data['out_sample_range'],
-                            'metric_value': selected_data['metric_value'],
+                            'winning_trades': selected_data['winning_trades'],
+                            'total_trades': selected_data['total_trades'],
+                            'win_rate': selected_data['win_rate'],
+                            'net_profit': selected_data['net_profit'],
                             'selected_based_on_period': prev_period
                         })
             
@@ -206,7 +287,16 @@ class PortfolioBacktest:
                 portfolio_df.to_csv(output_path, index=False)
                 self.top_portfolios[f"top{n}"] = portfolio_df
                 print(f"Created Top {n} portfolio with {len(portfolio_df)} periods")
-            
+                
+                # Print some statistics about the selection
+                avg_winning_trades = portfolio_df['winning_trades'].mean()
+                avg_win_rate = portfolio_df['win_rate'].mean()
+                avg_net_profit = portfolio_df['net_profit'].mean()
+                print(f"Average metrics for Top {n} portfolio:")
+                print(f"  - Winning trades per period: {avg_winning_trades:.2f}")
+                print(f"  - Win rate: {avg_win_rate:.2f}%")
+                print(f"  - Net profit per period: {avg_net_profit:.2f}%")
+        
         return self.top_portfolios
     
     def identify_positive_outliers(self, monthly_stats_df, z_threshold=3.0):

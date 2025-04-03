@@ -1,0 +1,2 @@
+normalized_period,symbol,original_period,out_sample_range,total_trades,median_return,win_rate,net_profit,selected_based_on_period
+259,SXPUSDT,69,2021-02-25 09:00:00 to 2021-02-27 09:00:00,4,0.08967030563609701,50.0,0.5503375683744816,258
